@@ -1,11 +1,12 @@
-package dataimport.reader;
+package parser.metadata;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-final class AlarmMetadata {
+public final class AlarmMetadata {
     private String reference;
     private String name;
     private String state;
@@ -15,7 +16,7 @@ final class AlarmMetadata {
     private String message;
     private long experiment;
 
-    AlarmMetadata(
+    public AlarmMetadata(
             String reference,
             String name,
             String state,
@@ -29,9 +30,9 @@ final class AlarmMetadata {
         this.name = name;
         this.state = state;
         this.order = order;
-        this.time = time;
+        this.time = Objects.requireNonNull(time);
         this.level = level;
-        this.message = message;
+        this.message = Objects.requireNonNull(message);
         this.experiment = experiment;
     }
 }

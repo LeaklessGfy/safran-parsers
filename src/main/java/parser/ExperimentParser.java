@@ -1,4 +1,9 @@
-package dataimport.reader;
+package parser;
+
+import parser.metadata.AlarmMetadata;
+import parser.metadata.ExperimentMetadata;
+import parser.metadata.MeasureMetadata;
+import parser.metadata.SampleMetadata;
 
 import java.io.*;
 import java.time.LocalDateTime;
@@ -11,7 +16,7 @@ public final class ExperimentParser {
     private final long experimentId;
     private final BufferedReader experimentReader;
     private final BufferedReader alarmsReader;
-    private final ExperimentMetadata metadata = new ExperimentMetadata();
+    private final ExperimentMetadata.Builder builder = new ExperimentMetadata.Builder();
 
     public ExperimentParser(long experimentId, BufferedReader experimentReader, BufferedReader alarmsReader) {
         this.experimentId = experimentId;
@@ -26,25 +31,29 @@ public final class ExperimentParser {
         if (alarmsReader != null) {
             parseAlarms();
         }
-        return metadata;
+        return builder.build();
     }
 
     private void parseHeader() throws IOException {
-        metadata.startTime = parseTime();
-        metadata.endTime = parseTime();
+        builder.startTime = parseTime();
+        builder.endTime = parseTime();
     }
 
     private void parseMeasures() throws IOException {
-        List<MeasureMetadata> list = Arrays.stream(experimentReader.readLine().split(";"))
+        List<MeasureMetadata.Builder> measureBuilders = Arrays.stream(experimentReader.readLine().split(";"))
                 .skip(FIRST_COLUMN_SAMPLE_VALUE)
                 .filter(el -> !el.isEmpty())
-                .map(MeasureMetadata::new)
+                .map(MeasureMetadata.Builder::new)
                 .collect(Collectors.toList());
-        parseTypeAndUnit(list);
-        metadata.measures.addAll(list);
+
+        parseTypeAndUnit(measureBuilders);
+
+        for (MeasureMetadata.Builder measureBuilder : measureBuilders) {
+            builder.measures.add(measureBuilder.build());
+        }
     }
 
-    private void parseTypeAndUnit(List<MeasureMetadata> measureReaderList) throws IOException {
+    private void parseTypeAndUnit(List<MeasureMetadata.Builder> measureBuilders) throws IOException {
         experimentReader.readLine(); // ligne blanche
         List<String> listType = Arrays.stream(experimentReader.readLine().split(";"))
                 .skip(FIRST_COLUMN_SAMPLE_VALUE)
@@ -55,7 +64,7 @@ public final class ExperimentParser {
                 .collect(Collectors.toList());
 
         for (int i = 0; i < listType.size(); i++) {
-            MeasureMetadata m = measureReaderList.get(i);
+            MeasureMetadata.Builder m = measureBuilders.get(i);
             m.type = listType.get(i);
             String unit = listUnit.get(i);
             if (!unit.isEmpty()) {
@@ -67,12 +76,14 @@ public final class ExperimentParser {
     private void parseSamples() throws IOException {
         String line;
         while ((line = experimentReader.readLine()) != null) {
-            List<String> samples = new ArrayList<>(Arrays.asList(line.split(";")));
-            for (int i = 0; i < metadata.measures.size(); i++) {
-                if (i + FIRST_COLUMN_SAMPLE_VALUE < samples.size()
-                        && samples.get(i + FIRST_COLUMN_SAMPLE_VALUE).length() > 0
-                        && !samples.get(i + FIRST_COLUMN_SAMPLE_VALUE).equalsIgnoreCase("nan")) {
-
+            String[] samples = line.split(";");
+            for (int i = 0; i < builder.measures.size(); i++) {
+                if (
+                        i + FIRST_COLUMN_SAMPLE_VALUE < samples.length
+                        && samples[i + FIRST_COLUMN_SAMPLE_VALUE].length() > 0
+                        && !samples[i + FIRST_COLUMN_SAMPLE_VALUE].equalsIgnoreCase("nan")
+                ) {
+                    builder.samples.add(new SampleMetadata(0, null)); // TODO: Find right data
                 }
             }
         }
@@ -81,15 +92,15 @@ public final class ExperimentParser {
     private void parseAlarms() throws IOException {
         String line;
         while ((line = alarmsReader.readLine()) != null) {
-            String[] splitedLine = line.split(";");
-            metadata.alarms.add(new AlarmMetadata(
+            String[] alarm = line.split(";");
+            builder.alarms.add(new AlarmMetadata(
                     null,
                     null,
                     null,
                     null,
-                    LocalDateTime.parse(metadata.startTime.split("T")[0] + "T" + splitedLine[0].split(" ")[1]),
-                    Integer.parseInt(splitedLine[1]),
-                    splitedLine[2],
+                    LocalDateTime.parse(builder.startTime.split("T")[0] + "T" + alarm[0].split(" ")[1]),
+                    Integer.parseInt(alarm[1]),
+                    alarm[2],
                     experimentId
             ));
         }

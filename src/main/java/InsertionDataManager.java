@@ -1,6 +1,4 @@
-package dataimport;
-
-import dataimport.reader.ExperimentParser;
+import parser.ExperimentParser;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.BufferedReader;
