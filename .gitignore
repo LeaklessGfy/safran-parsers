@@ -1,4 +1,13 @@
-.idea/
-target/
-parser.iml
 *.csv
+
+# JAVA
+java/.idea/
+java/target/
+java/parser.iml
+
+# RUST
+rust/target/
+
+# GOLANG
+
+# JAVASCRIPT
