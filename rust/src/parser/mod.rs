@@ -5,15 +5,16 @@ use std::io::{BufRead, BufReader};
 pub mod samples_parser;
 pub mod alarms_parser;
 
-fn parse_line(reader: &mut BufReader<File>, skip: usize, limit: usize) -> Vec<String> {
+fn parse_line(reader: &mut BufReader<File>, skip: usize, limit: usize) -> Result<Vec<String>, String> {
   let mut buffer = Vec::new();
 
-  let num_bytes = reader
-    .read_until(b'\n', &mut buffer)
-    .expect("Error while reading");
+  let num_bytes = match reader.read_until(b'\n', &mut buffer) {
+    Ok(num_bytes) => num_bytes,
+    Err(_) => return Err("Error while reading".to_string()) 
+  };
   
   if num_bytes < 1 {
-    return Vec::new();
+    return Ok(Vec::new());
   }
 
   let line = unsafe {
@@ -36,12 +37,21 @@ fn parse_line(reader: &mut BufReader<File>, skip: usize, limit: usize) -> Vec<St
           .to_vec()
       ).unwrap_or(String::new())
     )
+    .map(|mut s| {
+      if s.ends_with('\n') {
+        s.pop();
+      }
+      s
+    })
     .collect();
 
-  return arr;
+  return Ok(arr);
 }
 
-fn read_empty_line(reader: &mut BufReader<File>) {
+fn read_empty_line(reader: &mut BufReader<File>) -> Result<(), String> {
   let mut e = String::new();
-  reader.read_line(&mut e).expect("Error reading empty line");
+  match reader.read_line(&mut e) {
+    Ok(_) => return Ok(()),
+    Err(_) => return Err("Error while reading".to_string()),
+  };
 }
