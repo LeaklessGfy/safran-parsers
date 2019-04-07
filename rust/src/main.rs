@@ -19,7 +19,7 @@ fn main() {
     println!("{:?}", sample);
   });
 
-  let alarms_file = File::open("../events.csv").expect("Alarms file not found");
+  let alarms_file = File::open("../event.csv").expect("Alarms file not found");
   let mut alarms_parser = AlarmsParser::new(alarms_file);
   let alarms = alarms_parser.parse_alarms();
 
