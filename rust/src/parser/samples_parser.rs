@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::str;
-use std::io::{BufRead, BufReader};
+use std::io::BufReader;
+use crate::parser::{parse_line, read_empty_line};
 
 #[derive(Debug)]
 pub struct Header {
@@ -41,8 +41,8 @@ impl SamplesParser {
 
   pub fn parse_measures(&mut self) -> Vec<Measure> {
     let mut measures = self.parse_only_measures();
-    let types = self.parse_line(2, 0);
-    let units = self.parse_line(2, 0);
+    let types = parse_line(&mut self.reader, 2, 0);
+    let units = parse_line(&mut self.reader, 2, 0);
     self.merge_types_units(&mut measures, types, units);
     return measures;
   }
@@ -51,7 +51,7 @@ impl SamplesParser {
     loop {
       let mut samples = Vec::new();
       for _ in 0..500 {
-        let arr = self.parse_line(0, 0);
+        let arr = parse_line(&mut self.reader, 0, 0);
         if arr.len() < 1 {
           f(samples);
           return;
@@ -67,7 +67,7 @@ impl SamplesParser {
   }
 
   fn parse_header(&mut self) -> Result<String, String> {
-    let arr = self.parse_line(1, 1);
+    let arr = parse_line(&mut self.reader, 1, 1);
     if arr.len() < 1 {
       return Err("Bad line formating".to_string());
     }
@@ -75,14 +75,13 @@ impl SamplesParser {
   }
 
   fn parse_only_measures(&mut self) -> Vec<Measure> {
-    let arr = self.parse_line(2, 0);
+    let arr = parse_line(&mut self.reader, 2, 0);
 
     let measures = arr.into_iter()
       .map(|s| Measure{name: s, typex: String::new(), unitx: String::new()})
       .collect();
 
-    let mut e = String::new();
-    self.reader.read_line(&mut e).expect("Error reading empty line");
+    read_empty_line(&mut self.reader);
 
     return measures;
   }
@@ -94,34 +93,5 @@ impl SamplesParser {
     for (i, unitx) in units.iter().enumerate() {
       measures[i].unitx = unitx.to_string();
     }
-  }
-
-  fn parse_line(&mut self, skip: usize, limit: usize) -> Vec<String> {
-    let mut buffer = Vec::new();
-
-    let num_bytes = self.reader.read_until(b'\n', &mut buffer)
-      .expect("Error while reading");
-
-    if num_bytes < 1 {
-      return Vec::new();
-    }
-
-    let line = unsafe {
-      str::from_utf8_unchecked(&buffer)
-    };
-
-    let arr: Vec<String> = line.split(';')
-      .skip(skip)
-      .enumerate()
-      .filter(|(i, _)| {
-        if limit > 0 {
-          return i < &limit;
-        }
-        return true;
-      })
-      .map(|(_, e)| String::from_utf8(e.as_bytes().to_vec()).unwrap_or(String::new()))
-      .collect();
-  
-    return arr;
   }
 }

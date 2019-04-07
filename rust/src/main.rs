@@ -2,6 +2,7 @@ mod parser;
 
 use std::fs::File;
 use parser::samples_parser::SamplesParser;
+use parser::alarms_parser::AlarmsParser;
 
 fn main() {
   let file = File::open("../testfile.csv").expect("File not found");
@@ -16,6 +17,11 @@ fn main() {
   samples_parser.parse_samples(measures.len(), |samples| {
     let sample = samples.first().unwrap();
     println!("{:?}", sample);
-    println!("{:?}", measures[sample.measure]);
   });
+
+  let alarms_file = File::open("../events.csv").expect("Alarms file not found");
+  let mut alarms_parser = AlarmsParser::new(alarms_file);
+  let alarms = alarms_parser.parse_alarms();
+
+  println!("{:?}", alarms); 
 }
