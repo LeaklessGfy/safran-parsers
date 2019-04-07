@@ -1,9 +1,9 @@
+pub mod samples_parser;
+pub mod alarms_parser;
+
 use std::fs::File;
 use std::str;
 use std::io::{BufRead, BufReader};
-
-pub mod samples_parser;
-pub mod alarms_parser;
 
 fn parse_line(reader: &mut BufReader<File>, skip: usize, limit: usize) -> Result<Vec<String>, String> {
   let mut buffer = Vec::new();

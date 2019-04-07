@@ -5,3 +5,6 @@ authors = ["Vincent Rasquier <vincent.rasquier@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+actix-web = "0.7"
+serde_json = "1.0"
+futures = "0.1"
