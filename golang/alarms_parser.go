@@ -1,9 +1,9 @@
-package parser
+package main
 
 import (
 	"bufio"
 	"errors"
-	"os"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -19,8 +19,8 @@ type Alarm struct {
 }
 
 // NewAlarmsParser create a Sample Parser with the scanner
-func NewAlarmsParser(file *os.File) *AlarmsParser {
-	return &AlarmsParser{bufio.NewScanner(file)}
+func NewAlarmsParser(reader io.Reader) *AlarmsParser {
+	return &AlarmsParser{bufio.NewScanner(reader)}
 }
 
 // ParseAlarms parse alarms in the file

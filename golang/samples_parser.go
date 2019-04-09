@@ -1,9 +1,9 @@
-package parser
+package main
 
 import (
+	"io"
 	"bufio"
 	"errors"
-	"os"
 	"strings"
 )
 
@@ -33,8 +33,8 @@ const separator = ";"
 const nan = "NaN"
 
 // NewSamplesParser create a Sample Parser with the scanner
-func NewSamplesParser(file *os.File) *SamplesParser {
-	return &SamplesParser{bufio.NewScanner(file)}
+func NewSamplesParser(reader io.Reader) *SamplesParser {
+	return &SamplesParser{bufio.NewScanner(reader)}
 }
 
 // ParseHeader parse the start and end date of the file
@@ -51,12 +51,24 @@ func (p SamplesParser) ParseHeader() (*Header, error) {
 }
 
 // ParseMeasures parse the measures of the file
-func (p SamplesParser) ParseMeasures() []*Measure {
-	measures := p.parseMeasures()
-	types := p.parseTypesUnits()
-	units := p.parseTypesUnits()
-	p.mergeTypesUnits(measures, types, units)
-	return measures
+func (p SamplesParser) ParseMeasures() ([]*Measure, error) {
+	measures, err := p.parseMeasures()
+	if err != nil {
+		return nil, err
+	}
+	types, err := parseLine(p.scanner, 2, 0)
+	if err != nil {
+		return nil, err
+	}
+	units, err := parseLine(p.scanner, 2, 0)
+	if err != nil {
+		return nil, err
+	}
+	err = p.mergeTypesUnits(measures, types, units)
+	if err != nil {
+		return nil, err
+	}
+	return measures, nil
 }
 
 // ParseSamples parse the samples of the file
@@ -81,47 +93,41 @@ func (p SamplesParser) ParseSamples(size int, executor func([]Sample)) {
 }
 
 func (p SamplesParser) parseDate() (string, error) {
-	arr := p.parseLine(1, 1)
+	arr, err := parseLine(p.scanner, 1, 1)
+	if err != nil {
+		return "", err
+	}
 	if len(arr) < 1 {
 		return "", errors.New("")
 	}
 	return arr[0], nil
 }
 
-func (p SamplesParser) parseMeasures() []*Measure {
-	arr := p.parseLine(2, 0)
+func (p SamplesParser) parseMeasures() ([]*Measure, error) {
+	arr, err := parseLine(p.scanner, 2, 0)
+	if err != nil {
+		return nil, err
+	}
 	var measures []*Measure
 	for _, m := range arr {
 		measures = append(measures, &Measure{Name: m})
 	}
 	p.scanner.Scan()
-	return measures
+	return measures, nil
 }
 
-func (p SamplesParser) parseTypesUnits() []string {
-	return p.parseLine(2, 0)
-}
-
-func (p SamplesParser) mergeTypesUnits(measures []*Measure, types, units []string) {
+func (p SamplesParser) mergeTypesUnits(measures []*Measure, types, units []string) error {
+	if len(types) != len(measures) {
+		return errors.New("Types length != measures length")
+	}
+	if len(units) != len(measures) {
+		return errors.New("Units length != measures length")
+	}
 	for i, typex := range types {
 		measures[i].Typex = typex
 	}
 	for i, unitx := range units {
 		measures[i].Unitx = unitx
 	}
-}
-
-func (p SamplesParser) parseLine(skip int, limit int) []string {
-	var arr []string
-	p.scanner.Scan()
-	line := p.scanner.Text()
-	if len(line) < 1 {
-		return arr
-	}
-	tmp := strings.Split(line, separator)
-	lgt := skip + limit
-	if limit < 1 {
-		lgt = len(tmp)
-	}
-	return tmp[skip:lgt]
+	return nil
 }

@@ -3,27 +3,49 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-
-	"github.com/leaklessgfy/safran-parser-golang/parser"
+	"net/http"
+	"encoding/json"
 )
 
+type Response struct {
+	Err bool   `json:"err"`
+	Msg string `json:"msg"`
+}
+
+type Server struct {
+	message chan []byte
+}
+
+func (s Server) indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+}
+
+func (s Server) uploadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(32 << 20)
+	go HandleImport(w, r, s.message)
+	json.NewEncoder(w).Encode(Response{Err: false, Msg: "success"})
+}
+
+func (s Server) eventsHandler(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	for {
+		fmt.Fprintf(w, "data: %s\n\n", <-s.message)
+		flusher.Flush()
+	}
+}
+
 func main() {
-	file, err := os.Open("C:\\Users\\vince\\Documents\\parser\\testfile.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	sampleParser := parser.NewSamplesParser(file)
-
-	_, err = sampleParser.ParseHeader()
-	if err != nil {
-		log.Fatal(err)
-	}
-	measures := sampleParser.ParseMeasures()
-	fmt.Println(len(measures))
-	sampleParser.ParseSamples(len(measures), func(samples []parser.Sample) {
-		fmt.Println(samples[0], measures[samples[0].Measure])
-	})
+	server := Server{message: make(chan []byte)}
+	http.HandleFunc("/", server.indexHandler)
+	http.HandleFunc("/upload", server.uploadHandler)
+	http.HandleFunc("/events", server.eventsHandler)
+	log.Fatal(http.ListenAndServe(":8088", nil))
 }
